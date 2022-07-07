@@ -1,0 +1,4 @@
+{
+  "SuppressPackageInstallationPrompt": true,
+  "Interpreter": "CondaEnv|CondaEnv|Pytorch"
+}

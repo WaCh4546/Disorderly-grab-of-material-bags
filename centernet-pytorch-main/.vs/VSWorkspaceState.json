@@ -1,0 +1,15 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\logs",
+    "\\model_data",
+    "\\nets",
+    "\\utils",
+    "\\VOCdevkit",
+    "\\VOCdevkit\\VOC2007",
+    "\\VOCdevkit\\VOC2007\\Annotations",
+    "\\VOCdevkit\\VOC2007\\ImageSets",
+    "\\VOCdevkit\\VOC2007\\JPEGImages"
+  ],
+  "PreviewInSolutionExplorer": false
+}
