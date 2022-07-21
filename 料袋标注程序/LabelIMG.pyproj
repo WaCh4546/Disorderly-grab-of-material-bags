@@ -4,14 +4,14 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>242dac11-aa2c-449f-8af7-d20ceebf13e2</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>LabelIMG.py</StartupFile>
+    <StartupFile>MainWindow.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>LabelIMG</Name>
     <RootNamespace>LabelIMG</RootNamespace>
-    <InterpreterId>CondaEnv|CondaEnv|pack</InterpreterId>
+    <InterpreterId>CondaEnv|CondaEnv|SLAM</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,6 +22,18 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="MaterialBag.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Marking.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MainWindow.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="UmbrellaCone.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="LabelIMG.py" />
     <Compile Include="ui.py" />
   </ItemGroup>

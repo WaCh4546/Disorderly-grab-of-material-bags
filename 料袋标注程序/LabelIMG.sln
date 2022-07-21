@@ -5,6 +5,11 @@ VisualStudioVersion = 16.0.32228.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "LabelIMG", "LabelIMG.pyproj", "{242DAC11-AA2C-449F-8AF7-D20CEEBF13E2}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BB0F2C8B-E74B-44A1-A522-44E7EA19BD71}"
+	ProjectSection(SolutionItems) = preProject
+		MainWindowUI.py = MainWindowUI.py
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

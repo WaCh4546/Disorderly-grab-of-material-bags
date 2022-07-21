@@ -16,7 +16,7 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
         self.setupUi(self)
         self.setWindowTitle("料带标签制作器")
         self.actionOpenFile.triggered.connect(self.OpenFile)
-        self.Refreshfolder.triggered.connect(self.OpenFile)
+        self.Refreshfolder.triggered.connect(self.refreshfolder)
         self.last.clicked.connect(self.lastimg)
         self.next.clicked.connect(self.nextimg)
         self.save.clicked.connect(self.SAVE)
@@ -33,7 +33,7 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
         self.printmessage("**************************************************说明**************************************************",time=False)
         self.printmessage("*****提示*****：请确保打开路径中不含中文，否则图片可能打不开！！！文件格式支持jpg、png",time=False)
         self.printmessage("**操作快捷键**：Q打开文件；A上一张；D下一张；S保存；R重置当前图片；鼠标左击选点、右击撤销上一步",time=False)
-        self.printmessage("***操作说明***：图片框鼠标左键依次单击料带四个顶点及长边上的两个点，完成所有料带后保存自动进入下一张",time=False)
+        self.printmessage("***操作说明***：图片框鼠标左键依次单击伞套上下左右四点和中心点，保存自动进入下一张",time=False)
     def RESET(self):
         if len(self.IMG_TEMP)!=0 :
             self.clear()
@@ -47,7 +47,6 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
             self.label.setScaledContents(True)#图片大小与label适应
             message="已重置"
             self.statusbar.showMessage(message,1000)
-            #self.printmessage("已重置")
     def __indent(self,elem, level=0):
         i = "\n" + level*"\t"
         if len(elem):
@@ -67,20 +66,13 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
         ymin=min(point[0][1],point[1][1],point[2][1],point[3][1])
         xmax=max(point[0][0],point[1][0],point[2][0],point[3][0])
         ymax=max(point[0][1],point[1][1],point[2][1],point[3][1])
-        [X,Y]=[point[4],point[5]] if point[4][1]>point[5][1] else [point[5],point[4]]
-        try:
-            J=atan((X[1]-Y[1])/(Y[0]-X[0]))*180/pi
-        except:
-            message="角度计算异常,请撤销或重置"
-            self.statusbar.showMessage(message,1000)
-            self.printmessage("角度计算异常,请撤销或重置")
-            J=0.0
-        #J=J+180 if J<0 else J
-        return [(xmin,ymin),(xmax,ymax),J],[X,Y]
+        return [(xmin,ymin),(xmax,ymax),(point[4][0],point[4][1])]
+
     def SAVE(self):
         result=[]
         try:
             path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
+            f=self.folder[self.folder.rfind("/")+1:]
         except:
             message="未加载图片"
             self.statusbar.showMessage(message,1000)
@@ -88,41 +80,67 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
             return
         if exists(path):
             remove(path)
-        if len(self.targets)!=0:
-            for point in self.targets:
-                X,_=self.calculate(point)
-                result.append(X)
+        if len(self.vertex)==5:
+            result=self.calculate(self.vertex)
             annotation = Element('annotation')
             tree = ElementTree(annotation)
             folder= Element('folder')
-            folder.text=self.folder
+            folder.text=f
             annotation.append(folder)
+
             filename= Element('filename')
             filename.text=self.IMGfile[self.currentimg]
             annotation.append(filename)
+
             Path= Element('path')
-            Path.text=path
+            Path.text=path.replace("/","\\")
             annotation.append(Path)
-            for r in result:
-                bag = Element('bag')
-                leftup=Element('leftup')
-                x=Element('x')
-                y=Element('y')
-                x.text,y.text=str(r[0][0]),str(r[0][1])
-                leftup.append(x)
-                leftup.append(y)
-                bag.append(leftup)
-                rightdown=Element('rightdown')
-                x=Element('x')
-                y=Element('y')
-                x.text,y.text=str(r[1][0]),str(r[1][1])
-                rightdown.append(x)
-                rightdown.append(y)
-                bag.append(rightdown)
-                joint=Element('joint')
-                joint.text=str(round(r[2],2))
-                bag.append(joint)
-                annotation.append(bag)
+
+            Size= Element('size')
+            width= Element('width')
+            width.text=str(self.Draw[-1].shape[1])
+            Size.append(width)
+
+            height= Element('height')
+            height.text=str(self.Draw[-1].shape[0])
+            Size.append(height)
+
+            depth= Element('depth')
+            depth.text=str(self.Draw[-1].shape[2])
+            Size.append(depth)
+            annotation.append(Size)
+
+            object= Element('object')
+            name= Element('name')
+            #name.text='UmbrellaCone'
+            name.text='FuelFiller'
+            object.append(name)
+
+            bndbox= Element('bndbox')
+            
+            xmin=Element('xmin')
+            xmin.text=str(result[0][0])
+            bndbox.append(xmin)
+            ymin=Element('ymin')
+            ymin.text=str(result[0][1])
+            bndbox.append(ymin)
+
+            xmax=Element('xmax')
+            xmax.text=str(result[1][0])
+            bndbox.append(xmax)
+            ymax=Element('ymax')
+            ymax.text=str(result[1][1])
+            bndbox.append(ymax)
+            object.append(bndbox)
+
+            center=Element('center')
+            x=Element('x')
+            y=Element('y')
+            x.text,y.text=str(result[2][0]),str(result[2][1])
+            center.append(x)
+            center.append(y)
+            object.append(center)
+            annotation.append(object)
             self.__indent(annotation)
             tree.write(path, xml_declaration=True)
             self.printmessage("已保存"+path)
@@ -131,6 +149,12 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
             self.nextimg()
 
     def OpenFile(self):
+        filename=self.folder
+        self.folder=None
+        self.refreshfolder()
+        if self.folder==None:
+            self.folder=filename
+    def refreshfolder(self):
         self.imgsum=0
         self.clear()
         self.IMGfile.clear()
@@ -164,10 +188,12 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
         else:
             Existstr="(未做标签)"
         self.printmessage("图片文件共"+str(self.imgsum)+"个，其中"+str(self.currentimg)+"个已做标签")
+        if self.currentimg==self.imgsum:
+            self.currentimg=0
         title="当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr
         _translate = QCoreApplication.translate
         self.groupBox.setTitle(_translate("MainWindow", title))
-        #self.printmessage("当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr)
+       
         if self.imgsum!=0:
             self.label.setPixmap(QPixmap(self.folder+"/"+self.IMGfile[self.currentimg]))
             self.label.setScaledContents(True)#图片大小与label适应
@@ -241,67 +267,49 @@ class LabelIMG(QMainWindow,Ui_MainWindow):
         #    return
         if event.button()==Qt.RightButton and len(self.IMG_TEMP)>1 :
             self.IMG_TEMP.pop()
-            if len(self.vertex)==0 and len(self.targets)!=0:
-                self.vertex=self.targets.pop()
-                self.Draw.pop()
             self.vertex.pop()
             img1=self.IMG_TEMP[-1]
             frame = cvtColor(img1, COLOR_RGB2BGR)
             img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
             self.label.setPixmap(QPixmap.fromImage(img))
             self.label.setScaledContents(True)#图片大小与label适应
-            if len(self.vertex)>4:
-                message="回撤到第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex)-4)+"个长边上的点。"
-            else:
-                message="回撤到第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex))+"个顶点。"
-            #message="回撤到第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex))+"个点"
+
+            message="回撤到第"+str(len(self.vertex))+"个点。"
             self.statusbar.showMessage(message,5000)
-            #self.printmessage("回撤到第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex))+"个点")
-        if event.button()==Qt.LeftButton :
+
+        if event.button()==Qt.LeftButton and len(self.vertex)<5 :
             img1=self.IMG_TEMP[-1].copy()
             x=img1.shape[1]*event.x()/self.label.width()
             y=img1.shape[0]*event.y()/self.label.height()
-            img_=circle(img1,center =(int(x),int(y)),radius = 6,color = (0,0,255),thickness = 2)
+            img_=circle(img1,center =(int(x),int(y)),radius = int(img1.shape[0]/150),color = (0,0,255),thickness = int(img1.shape[0]/450))
             self.IMG_TEMP.append(img_)
             frame = cvtColor(img_, COLOR_RGB2BGR)
             img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
             self.label.setPixmap(QPixmap.fromImage(img))
             self.label.setScaledContents(True)#图片大小与label适应
             self.vertex.append((int(x),int(y)))
-            #self.printmessage("采集第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex))+"个点")
-            if len(self.vertex)==6:
+            if len(self.vertex)==5:
                 self.IMG_TEMP.pop()
-                self.targets.append(self.vertex.copy())
-                drawdata,XY=self.calculate(self.vertex)
-                self.vertex.clear()
+                drawdata=self.calculate(self.vertex)
                 iimg=self.Draw[-1].copy()
-                self.drawline(iimg,drawdata,XY)
-                self.Draw.append(iimg)
+                self.drawline(iimg,drawdata)
                 self.IMG_TEMP.append(iimg)
                 frame = cvtColor(iimg, COLOR_RGB2BGR)
                 img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
                 self.label.setPixmap(QPixmap.fromImage(img))
                 self.label.setScaledContents(True)#图片大小与label适应
-                message="完成第"+str(len(self.targets))+"个料包,角度("+str(round(drawdata[2],1))+")"
+                message="完成"
                 self.statusbar.showMessage(message,5000)
-                #self.printmessage("完成第"+str(len(self.targets)+1)+"个料包,角度("+str(round(drawdata[2],1))+")")
             else:
-                if len(self.vertex)>=4:
-                    message="请继续点击第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex)-3)+"个长边上的点，以确定角度。"
-                else:
-                    message="请继续点击第"+str(len(self.targets)+1)+"个料包,第"+str(len(self.vertex)+1)+"个顶点，以框选料带。"
+                message="请继续点击第"+str(len(self.vertex)+1)+"个点。"
                 self.statusbar.showMessage(message,5000)
-    def drawline(self,img,data,XY):
-        line(img,(data[0][0],data[0][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=2)
-        line(img,(data[0][0],data[0][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=2)
-        line(img,(data[1][0],data[1][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=2)
-        line(img,(data[1][0],data[1][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=2)
-        t= 1 if data[2]>=0 else -1
-        step=t*int(((XY[0][0]-XY[1][0])**2+(XY[0][1]-XY[1][1])**2)**0.5)
-        line(img,(XY[0][0],XY[0][1]),(XY[1][0],XY[1][1]),color=(0,255,0),thickness=2)
-        line(img,(XY[0][0],XY[0][1]),(XY[0][0]+step,XY[0][1]),color=(0,255,0),thickness=2)
-        img = putText(img, str(round(data[2],1)), (XY[0][0]+t*30, XY[0][1]+30), 0, 1.2, (0, 255, 0), 2)
-        img=circle(img,center =(int((data[0][0]+data[1][0])/2),int((data[0][1]+data[1][1])/2)),radius = 3,color = (0,255,255),thickness = 5)
+    def drawline(self,img,data):
+        line(img,(data[0][0],data[0][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
+        line(img,(data[0][0],data[0][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
+        line(img,(data[1][0],data[1][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
+        line(img,(data[1][0],data[1][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
+        img=circle(img,center =(data[2][0],data[2][1]),radius = int(img.shape[0]/150),color = (0,0,255),thickness = int(img.shape[0]/450))
+
     def printmessage(self,message,time=True):
         textCursor = self.Message.textCursor()
         textCursor.movePosition(textCursor.End)
