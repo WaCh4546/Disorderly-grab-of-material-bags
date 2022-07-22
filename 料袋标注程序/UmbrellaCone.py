@@ -7,6 +7,7 @@ from os import remove,listdir
 from cv2 import  imread,circle,line,putText,cvtColor,COLOR_RGB2BGR
 from math import atan,pi
 from xml.etree.ElementTree import Element,ElementTree
+import xml.etree.ElementTree as ET
 class UmbrellaCone(Marking):
     """description of class"""
     def __init__(self,classlabel):
@@ -24,18 +25,8 @@ class UmbrellaCone(Marking):
         xmax=max(point[0][0],point[1][0],point[2][0],point[3][0])
         ymax=max(point[0][1],point[1][1],point[2][1],point[3][1])
         return [(xmin,ymin),(xmax,ymax),(point[4][0],point[4][1])]
-    def savexml(self):
+    def savexml(self,path,f):
         result=[]
-        try:
-            path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
-            f=self.folder[self.folder.rfind("/")+1:]
-        except:
-            message="未加载图片"
-            self.statusbar.showMessage(message,1000)
-            #self.printmessage("未加载图片")
-            return
-        if exists(path):
-            remove(path)
         if len(self.vertex)==5:
             result=self.calculate(self.vertex)
             annotation = Element('annotation')
@@ -98,11 +89,7 @@ class UmbrellaCone(Marking):
             annotation.append(object)
             self.indent(annotation)
             tree.write(path, xml_declaration=True)
-            self.printmessage("已保存"+path)
-            message="加载下一张"
-            self.statusbar.showMessage(message,1000)
-            self.clear()
-            self.nextimg()
+            
     def MouseRightPressEvent(self,x,y):
         if len(self.IMGfile)==0:
             return
@@ -152,5 +139,18 @@ class UmbrellaCone(Marking):
         line(img,(data[1][0],data[1][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
         line(img,(data[1][0],data[1][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=int(img.shape[0]/450))
         img=circle(img,center =(data[2][0],data[2][1]),radius = int(img.shape[0]/150),color = (0,0,255),thickness = -1)
-
-
+    def loadXML(self,xml_path,img):
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        for obj in root.iter('object'):
+            if obj.find('name').text !=self.classlabel:
+                return
+            for bndbox in obj.iter('bndbox'):
+                xmin = int(bndbox.find('xmin').text)
+                ymin = int(bndbox.find('ymin').text)
+                xmax = int(bndbox.find('xmax').text)
+                ymax = int(bndbox.find('ymax').text)
+            for center in obj.iter('center'):
+                cx = int(center.find('x').text)
+                cy = int(center.find('y').text)
+            self.draw(img,[[xmin,ymin],[xmax,ymax],[cx,cy]])

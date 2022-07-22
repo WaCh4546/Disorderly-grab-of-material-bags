@@ -5,9 +5,9 @@ from cv2 import  imread,circle,line,putText,cvtColor,COLOR_RGB2BGR
 from os.path import exists 
 from os import remove,listdir
 from cv2 import  imread,circle,line,putText,cvtColor,COLOR_RGB2BGR
-from math import atan,pi
+from math import atan,pi,cos,sin
 from xml.etree.ElementTree import Element,ElementTree
-
+import xml.etree.ElementTree as ET
 class MaterialBag(Marking):
     """description of class"""
     def __init__(self):
@@ -93,29 +93,22 @@ class MaterialBag(Marking):
             self.statusbar.showMessage(message,5000)
 
     def draw(self,img,data,XY):
+
         line(img,(data[0][0],data[0][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=int(img.shape[0]/400))
         line(img,(data[0][0],data[0][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=int(img.shape[0]/400))
         line(img,(data[1][0],data[1][1]),(data[1][0],data[0][1]),color=(255,0,0),thickness=int(img.shape[0]/400))
         line(img,(data[1][0],data[1][1]),(data[0][0],data[1][1]),color=(255,0,0),thickness=int(img.shape[0]/400))
+        img=circle(img,center =(int((data[0][0]+data[1][0])/2),int((data[0][1]+data[1][1])/2)),radius = int(img.shape[0]/150),color = (255,0,255),thickness = -1)
+
         t= 1 if data[2]>=0 else -1
         step=t*int(((XY[0][0]-XY[1][0])**2+(XY[0][1]-XY[1][1])**2)**0.5)
         line(img,(XY[0][0],XY[0][1]),(XY[1][0],XY[1][1]),color=(0,255,0),thickness=int(img.shape[0]/400))
         line(img,(XY[0][0],XY[0][1]),(XY[0][0]+step,XY[0][1]),color=(0,255,0),thickness=int(img.shape[0]/400))
         img = putText(img, str(round(data[2],1)), (XY[0][0]+t*30, XY[0][1]+30), 0, 0.8, (0, 255, 0), int(img.shape[0]/400))
-        img=circle(img,center =(int((data[0][0]+data[1][0])/2),int((data[0][1]+data[1][1])/2)),radius = int(img.shape[0]/150),color = (255,0,255),thickness = -1)
-        
-    def savexml(self):
+
+
+    def savexml(self,path,f):
         result=[]
-        try:
-            path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
-            f=self.folder[self.folder.rfind("/")+1:]
-        except:
-            message="未加载图片"
-            self.statusbar.showMessage(message,1000)
-            #self.printmessage("未加载图片")
-            return
-        if exists(path):
-            remove(path)
         if len(self.targets)!=0:
             for point in self.targets:
                 X,_=self.calculate(point)
@@ -176,8 +169,23 @@ class MaterialBag(Marking):
                 annotation.append(object)
             self.indent(annotation)
             tree.write(path, xml_declaration=True)
-            self.printmessage("已保存"+path)
-            message="加载下一张"
-            self.statusbar.showMessage(message,1000)
-            self.clear()
-            self.nextimg()
+
+    def loadXML(self,xml_path,img):
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        for obj in root.iter('object'):
+            if obj.find('name').text !='MaterialBag':
+                return
+            for bndbox in obj.iter('bndbox'):
+                xmin = int(bndbox.find('xmin').text)
+                ymin = int(bndbox.find('ymin').text)
+                xmax = int(bndbox.find('xmax').text)
+                ymax = int(bndbox.find('ymax').text)
+            direction=float(obj.find('direction').text)
+            cx=(xmin+xmax)/2
+            cy=(ymin+ymax)/2
+            XY=[]
+            XY.append([int(cx),int(cy)])
+            XY.append([int(cx),int(cy)])
+
+            self.draw(img,[[xmin,ymin],[xmax,ymax],direction],XY)

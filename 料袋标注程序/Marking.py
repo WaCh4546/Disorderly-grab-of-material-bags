@@ -9,7 +9,7 @@ from math import atan,pi
 from xml.etree.ElementTree import Element,ElementTree
 from ui import Ui_MainWindow
 class Marking(QMainWindow,Ui_MainWindow):
-    """标注类，需要子类重载calculate、save、___mousePressEvent、draw函数"""
+    """标注类，需要子类重载calculate、save、___mousePressEvent、draw、loadXML函数"""
     def __init__(self):
         super(Marking, self).__init__()
         self.setupUi(self)
@@ -29,7 +29,7 @@ class Marking(QMainWindow,Ui_MainWindow):
         self.Refreshfolder.triggered.connect(self.refreshfolder)
         self.last.clicked.connect(self.lastimg)
         self.next.clicked.connect(self.nextimg)
-        self.save.clicked.connect(self.savexml)
+        self.save.clicked.connect(self.saveresult)
         self.reset.clicked.connect(self.resetoperate)
         self.label.mousePressEvent=self.___mousePressEvent
 
@@ -58,6 +58,24 @@ class Marking(QMainWindow,Ui_MainWindow):
         #子类重写，用于实现标注中相应的计算
         return None
 
+    def saveresult(self):
+        try:
+            path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"#存放路径
+            f=self.folder[self.folder.rfind("/")+1:]#文件夹名
+        except:
+            message="未加载图片"
+            QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
+            self.statusbar.showMessage(message,1000)
+            return
+        if exists(path) and QMessageBox.question(self,"提示","已有标注信息，是否覆盖？",QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes) == QMessageBox.Yes:
+            remove(path)
+        self.savexml(path,f)
+        self.printmessage("已保存"+path)
+        message="加载下一张"
+        self.statusbar.showMessage(message,1000)
+        self.clear()
+        self.nextimg()
+
     def savexml(self):
         #用于保存标注结果，XML文件
         pass
@@ -84,11 +102,17 @@ class Marking(QMainWindow,Ui_MainWindow):
             self.folder=None
             return 
         dir_files = listdir(self.folder)
-        self.printmessage("已打开"+self.folder)
+        
         for file in dir_files:
             if len(file)>4 and (file[-4:]==".jpg" or file[-4:]==".png"):
                 self.IMGfile.append(file)
         self.imgsum=len(self.IMGfile)
+        if self.imgsum==0:
+            QMessageBox.question(self,"提示","当前文件夹无图片",QMessageBox.Yes,QMessageBox.Yes)
+            self.folder=None
+            self.statusbar.showMessage("请重新选择文件夹",1000)
+            return
+        self.printmessage("已打开"+self.folder)
         exi=[]
         unexi=[]
         while self.currentimg<self.imgsum :
@@ -106,18 +130,28 @@ class Marking(QMainWindow,Ui_MainWindow):
             Existstr="(未做标签)"
         self.printmessage("图片文件共"+str(self.imgsum)+"个，其中"+str(self.currentimg)+"个已做标签")
         if self.currentimg==self.imgsum:
+            QMessageBox.information(self,"提示","所有图片已完成标注",QMessageBox.Yes,QMessageBox.Yes)
             self.currentimg=0
+            
         title="当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr
         _translate = QCoreApplication.translate
         self.groupBox.setTitle(_translate("MainWindow", title))
-       
-        if self.imgsum!=0:
-            self.label.setPixmap(QPixmap(self.folder+"/"+self.IMGfile[self.currentimg]))
-            self.label.setScaledContents(True)#图片大小与label适应
 
         file_path=self.folder +"/"+self.IMGfile[self.currentimg]
+        img=imread(file_path)
+        xml_path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
+        if exists(path):
+            self.loadXML(xml_path,img)
+        frame = cvtColor(img, COLOR_RGB2BGR)
+        img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
+        self.label.setPixmap(QPixmap.fromImage(img))
+        self.label.setScaledContents(True)#图片大小与label适应
+
         self.IMG_TEMP.append(imread(file_path)) 
         self.Draw.append(imread(file_path)) 
+        
+    def loadXML(self,xml_path,img):
+        pass
 
     def lastimg(self):
         #图片上翻页
@@ -126,26 +160,36 @@ class Marking(QMainWindow,Ui_MainWindow):
                 if QMessageBox.question(self,"提示","尚未保存，是否舍弃当前操作？",QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes) != QMessageBox.Yes:
                     return
             self.currentimg-=1
-            self.label.setPixmap(QPixmap(self.folder +"/"+self.IMGfile[self.currentimg]))
-            self.label.setScaledContents(True)#图片大小与label适应
+            file_path=self.folder +"/"+self.IMGfile[self.currentimg]
+            img=imread(file_path)
+            
             path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
             if exists(path):
+                self.loadXML(path,img)
                 Existstr="(已有标签)"
             else:
                 Existstr="(未做标签)"
+
+            frame = cvtColor(img, COLOR_RGB2BGR)
+            img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
+            self.label.setPixmap(QPixmap.fromImage(img))
+            self.label.setScaledContents(True)#图片大小与label适应
+
             title="当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr
             _translate = QCoreApplication.translate
             self.groupBox.setTitle(_translate("MainWindow", title))
-            #self.printmessage("当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr)
+            
             self.clear()
             file_path=self.folder +"/"+self.IMGfile[self.currentimg]
             self.IMG_TEMP.append(imread(file_path))
             self.Draw.append(imread(file_path))
         elif len(self.IMGfile)==0:
             message="未加载图片"
+            QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
             self.statusbar.showMessage(message,1000)
         else:
             message="已经是第一个文件了"
+            QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
             self.statusbar.showMessage(message,1000)
 
     def nextimg(self):
@@ -155,27 +199,35 @@ class Marking(QMainWindow,Ui_MainWindow):
                 if QMessageBox.question(self,"提示","尚未保存，是否舍弃当前操作？",QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes) != QMessageBox.Yes:
                     return
             self.currentimg+=1
-            self.label.setPixmap(QPixmap(self.folder +"/"+self.IMGfile[self.currentimg]))
-            self.label.setScaledContents(True)#图片大小与label适应
+            file_path=self.folder +"/"+self.IMGfile[self.currentimg]
+            img=imread(file_path)
+
             path=self.folder +"/"+self.IMGfile[self.currentimg][:-3]+"xml"
             if exists(path):
+                self.loadXML(path,img)
                 Existstr="(已有标签)"
             else:
                 Existstr="(未做标签)"
+
+            frame = cvtColor(img, COLOR_RGB2BGR)
+            img = QImage(frame.data, frame.shape[1], frame.shape[0],frame.shape[1]*3, QImage.Format_RGB888)#第四个参数设置通道数对齐,不然图片可能会变形
+            self.label.setPixmap(QPixmap.fromImage(img))
+            self.label.setScaledContents(True)#图片大小与label适应
+
             title="当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr
             _translate = QCoreApplication.translate
             self.groupBox.setTitle(_translate("MainWindow", title))
-            #self.printmessage("当前文件("+str(self.currentimg+1)+"/"+str(self.imgsum)+"):"+self.IMGfile[self.currentimg]+Existstr)
             self.clear()
-            file_path=self.folder +"/"+self.IMGfile[self.currentimg]
             self.IMG_TEMP.append(imread(file_path))
             self.Draw.append(imread(file_path))
         elif len(self.IMGfile)==0:
             message="未加载图片"
+            QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
             self.statusbar.showMessage(message,1000)
             #self.printmessage("未加载图片")
-        else:
+        elif self.currentimg>=self.imgsum-1:
             message="已经是最后一个文件了"
+            QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
             self.statusbar.showMessage(message,1000)    
 
     def MouseLeftPressEvent(self,x,y):
