@@ -25,9 +25,11 @@ class UmbrellaCone(Marking):
         xmax=max(point[0][0],point[1][0],point[2][0],point[3][0])
         ymax=max(point[0][1],point[1][1],point[2][1],point[3][1])
         return [(xmin,ymin),(xmax,ymax),(point[4][0],point[4][1])]
-    def savexml(self,path,f):
+    def savexml(self,path,f,delscr):
         result=[]
         if len(self.vertex)==5:
+            if delscr:
+                remove(path)
             result=self.calculate(self.vertex)
             annotation = Element('annotation')
             tree = ElementTree(annotation)
@@ -89,6 +91,9 @@ class UmbrellaCone(Marking):
             annotation.append(object)
             self.indent(annotation)
             tree.write(path, xml_declaration=True)
+            return True
+        else:
+            return False
             
     def MouseRightPressEvent(self,x,y):
         if len(self.IMGfile)==0:

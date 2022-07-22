@@ -67,14 +67,21 @@ class Marking(QMainWindow,Ui_MainWindow):
             QMessageBox.information(self,"提示",message,QMessageBox.Yes,QMessageBox.Yes)
             self.statusbar.showMessage(message,1000)
             return
-        if exists(path) and QMessageBox.question(self,"提示","已有标注信息，是否覆盖？",QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes) == QMessageBox.Yes:
-            remove(path)
-        self.savexml(path,f)
-        self.printmessage("已保存"+path)
-        message="加载下一张"
-        self.statusbar.showMessage(message,1000)
-        self.clear()
-        self.nextimg()
+        delscr=False
+        if exists(path):
+           if QMessageBox.question(self,"提示","已有标注信息，是否覆盖？",QMessageBox.Yes|QMessageBox.No,QMessageBox.Yes) == QMessageBox.Yes:
+               delscr=True #删除已存在的文件
+           else:
+               return
+        if self.savexml(path,f,delscr):
+            self.printmessage("已保存"+path)
+            message="加载下一张"
+            self.statusbar.showMessage(message,1000)
+            self.clear()
+            self.nextimg()
+        else:
+            QMessageBox.information(self,"提示","未发现有效标注操作",QMessageBox.Yes,QMessageBox.Yes)
+            return
 
     def savexml(self):
         #用于保存标注结果，XML文件

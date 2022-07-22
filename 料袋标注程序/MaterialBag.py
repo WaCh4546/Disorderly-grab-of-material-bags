@@ -107,9 +107,11 @@ class MaterialBag(Marking):
         img = putText(img, str(round(data[2],1)), (XY[0][0]+t*30, XY[0][1]+30), 0, 0.8, (0, 255, 0), int(img.shape[0]/400))
 
 
-    def savexml(self,path,f):
+    def savexml(self,path,f,delscr):
         result=[]
         if len(self.targets)!=0:
+            if delscr:
+                remove(path)
             for point in self.targets:
                 X,_=self.calculate(point)
                 result.append(X)
@@ -169,7 +171,9 @@ class MaterialBag(Marking):
                 annotation.append(object)
             self.indent(annotation)
             tree.write(path, xml_declaration=True)
-
+            return True
+        else:
+            return False
     def loadXML(self,xml_path,img):
         tree = ET.parse(xml_path)
         root = tree.getroot()
